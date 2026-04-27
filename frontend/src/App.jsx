@@ -174,7 +174,7 @@ export default function App() {
     const formData = new FormData()
     formData.append("file", image)
     try {
-      const res = await axios.post("http://localhost:8000/predict", formData)
+      const res = await axios.post("https://tomato-disease-detector-ii1n.onrender.com/predict", formData)
       setResult(res.data)
     } catch (err) {
       setResult({ error: t.error })
@@ -183,7 +183,7 @@ export default function App() {
   }
 
   const fetchHistory = async () => {
-    const res = await axios.get("http://localhost:8000/history")
+    const res = await axios.get("https://tomato-disease-detector-ii1n.onrender.com/history")
     setHistory(res.data)
     setShowHistory(true)
   }
