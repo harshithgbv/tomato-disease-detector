@@ -15,7 +15,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "https://tomato-disease-detector-kappa.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
