@@ -1,6 +1,66 @@
 import { useState } from "react"
 import axios from "axios"
 
+const translations = {
+  english: {
+    title: "🍅 Tomato Disease Detector",
+    subtitle: "Upload a tomato leaf image to detect disease",
+    detect: "Detect Disease",
+    detecting: "Detecting...",
+    disease: "🔍 Disease",
+    confidence: "📊 Confidence",
+    treatment: "💊 Treatment",
+    products: "🧴 Recommended Products",
+    organic: "🌿 Organic Products",
+    chemical: "🧪 Chemical Products",
+    preventive: "🛡️ Preventive Products",
+    shops: "🗺️ Find Nearby Shops",
+    shopsDesc: "Find agricultural and pesticide shops near your location",
+    shopsBtn: "🗺️ Open Google Maps — Find Shops Near Me",
+    history: "📋 Detection History",
+    historyBtn: "View Past Detections",
+    error: "Could not connect to backend.",
+  },
+  hindi: {
+    title: "🍅 टमाटर रोग पहचानकर्ता",
+    subtitle: "रोग का पता लगाने के लिए टमाटर के पत्ते की छवि अपलोड करें",
+    detect: "रोग का पता लगाएं",
+    detecting: "पता लगाया जा रहा है...",
+    disease: "🔍 रोग",
+    confidence: "📊 विश्वास",
+    treatment: "💊 उपचार",
+    products: "🧴 अनुशंसित उत्पाद",
+    organic: "🌿 जैविक उत्पाद",
+    chemical: "🧪 रासायनिक उत्पाद",
+    preventive: "🛡️ निवारक उत्पाद",
+    shops: "🗺️ नजदीकी दुकानें खोजें",
+    shopsDesc: "अपने स्थान के पास कृषि की दुकानें खोजें",
+    shopsBtn: "🗺️ Google Maps खोलें",
+    history: "📋 पहचान इतिहास",
+    historyBtn: "पिछली पहचान देखें",
+    error: "बैकएंड से कनेक्ट नहीं हो सका।",
+  },
+  kannada: {
+    title: "🍅 ಟೊಮೇಟೊ ರೋಗ ಪತ್ತೆಕಾರಕ",
+    subtitle: "ರೋಗವನ್ನು ಪತ್ತೆಹಚ್ಚಲು ಟೊಮೇಟೊ ಎಲೆಯ ಚಿತ್ರವನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ",
+    detect: "ರೋಗ ಪತ್ತೆಹಚ್ಚಿ",
+    detecting: "ಪತ್ತೆಹಚ್ಚಲಾಗುತ್ತಿದೆ...",
+    disease: "🔍 ರೋಗ",
+    confidence: "📊 ವಿಶ್ವಾಸ",
+    treatment: "💊 ಚಿಕಿತ್ಸೆ",
+    products: "🧴 ಶಿಫಾರಸು ಮಾಡಿದ ಉತ್ಪನ್ನಗಳು",
+    organic: "🌿 ಸಾವಯವ ಉತ್ಪನ್ನಗಳು",
+    chemical: "🧪 ರಾಸಾಯನಿಕ ಉತ್ಪನ್ನಗಳು",
+    preventive: "🛡️ ತಡೆಗಟ್ಟುವ ಉತ್ಪನ್ನಗಳು",
+    shops: "🗺️ ಹತ್ತಿರದ ಅಂಗಡಿಗಳನ್ನು ಹುಡುಕಿ",
+    shopsDesc: "ನಿಮ್ಮ ಸ್ಥಳದ ಬಳಿ ಕೃಷಿ ಅಂಗಡಿಗಳನ್ನು ಹುಡುಕಿ",
+    shopsBtn: "🗺️ Google Maps ತೆರೆಯಿರಿ",
+    history: "📋 ಪತ್ತೆ ಇತಿಹಾಸ",
+    historyBtn: "ಹಿಂದಿನ ಪತ್ತೆಗಳನ್ನು ವೀಕ್ಷಿಸಿ",
+    error: "ಬ್ಯಾಕೆಂಡ್‌ಗೆ ಸಂಪರ್ಕಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+  }
+}
+
 const diseaseProducts = {
   "Early Blight": {
     organic: [
@@ -77,6 +137,7 @@ const diseaseProducts = {
     ]
   }
 }
+
 const labelColors = {
   green: "bg-green-100 text-green-800 border-green-300",
   blue: "bg-blue-100 text-blue-800 border-blue-300",
@@ -95,13 +156,10 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [history, setHistory] = useState([])
-const [showHistory, setShowHistory] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const [language, setLanguage] = useState("english")
 
-const fetchHistory = async () => {
-  const res = await axios.get("http://localhost:8000/history")
-  setHistory(res.data)
-  setShowHistory(true)
-}
+  const t = translations[language]
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -119,9 +177,15 @@ const fetchHistory = async () => {
       const res = await axios.post("http://localhost:8000/predict", formData)
       setResult(res.data)
     } catch (err) {
-      setResult({ error: "Could not connect to backend. Make sure it is running." })
+      setResult({ error: t.error })
     }
     setLoading(false)
+  }
+
+  const fetchHistory = async () => {
+    const res = await axios.get("http://localhost:8000/history")
+    setHistory(res.data)
+    setShowHistory(true)
   }
 
   const handleFindShops = () => {
@@ -141,9 +205,28 @@ const fetchHistory = async () => {
 
   return (
     <div className="min-h-screen bg-green-50 flex flex-col items-center p-6">
-      <h1 className="text-3xl font-bold text-green-800 mb-2 mt-6">🍅 Tomato Disease Detector</h1>
-      <p className="text-green-600 mb-8">Upload a tomato leaf image to detect disease</p>
 
+      {/* Language Selector */}
+      <div className="flex gap-2 mb-4 mt-4">
+        {["english", "hindi", "kannada"].map(lang => (
+          <button
+            key={lang}
+            onClick={() => setLanguage(lang)}
+            className={`px-4 py-1 rounded-full text-sm font-semibold border transition ${
+              language === lang
+                ? "bg-green-600 text-white border-green-600"
+                : "bg-white text-green-700 border-green-300 hover:bg-green-50"
+            }`}
+          >
+            {lang === "english" ? "English" : lang === "hindi" ? "हिंदी" : "ಕನ್ನಡ"}
+          </button>
+        ))}
+      </div>
+
+      <h1 className="text-3xl font-bold text-green-800 mb-2">{t.title}</h1>
+      <p className="text-green-600 mb-8">{t.subtitle}</p>
+
+      {/* Upload and Detect */}
       <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md mb-6">
         <input
           type="file"
@@ -161,7 +244,7 @@ const fetchHistory = async () => {
           disabled={!image || loading}
           className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 disabled:opacity-50 transition"
         >
-          {loading ? "Detecting..." : "Detect Disease"}
+          {loading ? t.detecting : t.detect}
         </button>
 
         {result && (
@@ -170,9 +253,9 @@ const fetchHistory = async () => {
               <p>{result.error}</p>
             ) : (
               <>
-                <p className="text-lg font-bold">🔍 Disease: {result.disease}</p>
-                <p className="text-sm mt-1">📊 Confidence: {result.confidence}</p>
-                <p className="text-sm mt-2">💊 {result.treatment}</p>
+                <p className="text-lg font-bold">{t.disease}: {result.disease}</p>
+                <p className="text-sm mt-1">{t.confidence}: {result.confidence}</p>
+                <p className="text-sm mt-2">{t.treatment}: {result.treatment}</p>
               </>
             )}
           </div>
@@ -181,13 +264,14 @@ const fetchHistory = async () => {
 
       {result && !result.error && (
         <>
+          {/* Product Recommendations */}
           {products && (
             <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-2xl mb-6">
-              <h2 className="text-xl font-bold text-green-800 mb-4">🧴 Recommended Products</h2>
+              <h2 className="text-xl font-bold text-green-800 mb-4">{t.products}</h2>
 
               {products.organic.length > 0 && (
                 <div className="mb-4">
-                  <h3 className="font-semibold text-green-700 mb-2">🌿 Organic Products</h3>
+                  <h3 className="font-semibold text-green-700 mb-2">{t.organic}</h3>
                   <div className="flex flex-col gap-2">
                     {products.organic.map((p, i) => (
                       <div key={i} className={`border rounded-xl p-3 ${labelColors.green}`}>
@@ -204,7 +288,7 @@ const fetchHistory = async () => {
 
               {products.chemical.length > 0 && (
                 <div className="mb-4">
-                  <h3 className="font-semibold text-blue-700 mb-2">🧪 Chemical Products</h3>
+                  <h3 className="font-semibold text-blue-700 mb-2">{t.chemical}</h3>
                   <div className="flex flex-col gap-2">
                     {products.chemical.map((p, i) => (
                       <div key={i} className={`border rounded-xl p-3 ${labelColors.blue}`}>
@@ -221,7 +305,7 @@ const fetchHistory = async () => {
 
               {products.preventive.length > 0 && (
                 <div className="mb-4">
-                  <h3 className="font-semibold text-yellow-700 mb-2">🛡️ Preventive Products</h3>
+                  <h3 className="font-semibold text-yellow-700 mb-2">{t.preventive}</h3>
                   <div className="flex flex-col gap-2">
                     {products.preventive.map((p, i) => (
                       <div key={i} className={`border rounded-xl p-3 ${labelColors.yellow}`}>
@@ -238,36 +322,39 @@ const fetchHistory = async () => {
             </div>
           )}
 
+          {/* Nearby Shops */}
           <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-2xl mb-6">
-            <h2 className="text-xl font-bold text-green-800 mb-2">🗺️ Find Nearby Shops</h2>
-            <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-2xl mb-6">
-  <h2 className="text-xl font-bold text-green-800 mb-2">📋 Detection History</h2>
-  <button
-    onClick={fetchHistory}
-    className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition mb-4"
-  >
-    View Past Detections
-  </button>
-  {showHistory && (
-    <div className="flex flex-col gap-3">
-      {history.map((item) => (
-        <div key={item.id} className="border rounded-xl p-3 bg-green-50">
-          <p className="font-bold text-green-800">🔍 {item.disease}</p>
-          <p className="text-sm text-gray-600">📊 {item.confidence} confidence</p>
-          <p className="text-sm text-gray-500">💊 {item.treatment}</p>
-          <p className="text-xs text-gray-400 mt-1">🕐 {new Date(item.detected_at).toLocaleString()}</p>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
-            <p className="text-gray-500 text-sm mb-4">Find agricultural and pesticide shops near your location</p>
+            <h2 className="text-xl font-bold text-green-800 mb-2">{t.shops}</h2>
+            <p className="text-gray-500 text-sm mb-4">{t.shopsDesc}</p>
             <button
               onClick={handleFindShops}
               className="w-full bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition"
             >
-              🗺️ Open Google Maps — Find Shops Near Me
+              {t.shopsBtn}
             </button>
+          </div>
+
+          {/* Detection History */}
+          <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-2xl mb-6">
+            <h2 className="text-xl font-bold text-green-800 mb-2">{t.history}</h2>
+            <button
+              onClick={fetchHistory}
+              className="w-full bg-green-600 text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition mb-4"
+            >
+              {t.historyBtn}
+            </button>
+            {showHistory && (
+              <div className="flex flex-col gap-3">
+                {history.map((item) => (
+                  <div key={item.id} className="border rounded-xl p-3 bg-green-50">
+                    <p className="font-bold text-green-800">🔍 {item.disease}</p>
+                    <p className="text-sm text-gray-600">📊 {item.confidence} confidence</p>
+                    <p className="text-sm text-gray-500">💊 {item.treatment}</p>
+                    <p className="text-xs text-gray-400 mt-1">🕐 {new Date(item.detected_at).toLocaleString()}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
