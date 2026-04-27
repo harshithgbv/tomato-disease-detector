@@ -6,6 +6,10 @@ import json, re
 from PIL import Image
 import io
 from supabase import create_client
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -16,16 +20,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-SUPABASE_URL = "https://rvydxgfsupwgnrxgumds.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2eWR4Z2ZzdXB3Z25yeGd1bWRzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzIxNjE4NSwiZXhwIjoyMDkyNzkyMTg1fQ.f8oepf_DcuWiH2VSGobI3_u2m_taa9x3l-w6lW2Oqcg"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     contents = await file.read()
-
     image = Image.open(io.BytesIO(contents)).convert("RGB")
     buffer = io.BytesIO()
     image.save(buffer, format="JPEG")
@@ -92,4 +95,3 @@ async def history():
         return response.data
     except Exception as e:
         return []
-   
