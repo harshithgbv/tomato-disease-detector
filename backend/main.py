@@ -25,9 +25,9 @@ app.add_middleware(
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 # ── Google Drive File IDs ──
-DISEASE_MODEL_ID   = "1oDAVReSivkkaRhH3tbJq_8lAqdRFDo4Q"
+DISEASE_MODEL_ID   = "1wNWvykCN3SiUzDYIuI_ACP8kr14XnyWi"
 VALIDATOR_MODEL_ID = "1okK1KGzjRyRpVtAOKFd5u7UO1EO9u4RD"
-CLASS_NAMES_ID     = "1wNWvykCN3SiUzDYIuI_ACP8kr14XnyWi"
+CLASS_NAMES_ID     = "1oDAVReSivkkaRhH3tbJq_8lAqdRFDo4Q"
 
 # ── Download models from Google Drive at startup ──
 def download_if_missing(file_id, filename):
