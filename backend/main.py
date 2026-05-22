@@ -1,12 +1,10 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-import httpx
-import base64
-import json, re
 from PIL import Image
-import io
+import numpy as np
+import tensorflow as tf
+import io, json, os, gdown
 from supabase import create_client
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,83 +13,171 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "https://tomato-disease-detector-kappa.vercel.app"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://tomato-disease-detector-kappa.vercel.app"
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# ── Supabase ──
+supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+# ── Google Drive File IDs ──
+DISEASE_MODEL_ID   = "1wNWvykCN3SiUzDYIuI_ACP8kr14XnyWi"
+VALIDATOR_MODEL_ID = "1okK1KGzjRyRpVtAOKFd5u7UO1EO9u4RD"
+CLASS_NAMES_ID     = "1oDAVReSivkkaRhH3tbJq_8lAqdRFDo4Q"
+
+# ── Download models from Google Drive at startup ──
+def download_if_missing(file_id, filename):
+    if not os.path.exists(filename):
+        print(f"Downloading {filename} from Google Drive...")
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, filename, quiet=False)
+        print(f"✅ {filename} downloaded!")
+    else:
+        print(f"✅ {filename} already exists, skipping download.")
+
+print("=" * 50)
+print("Loading TomatoGuard AI models...")
+print("=" * 50)
+
+download_if_missing(DISEASE_MODEL_ID,   "tomatoguard_FINAL.keras")
+download_if_missing(VALIDATOR_MODEL_ID, "tomato_validator.keras")
+download_if_missing(CLASS_NAMES_ID,     "class_names.json")
+
+disease_model   = tf.keras.models.load_model("tomatoguard_FINAL.keras")
+validator_model = tf.keras.models.load_model("tomato_validator.keras")
+
+with open("class_names.json") as f:
+    class_names = json.load(f)
+
+print(f"✅ Models loaded! {len(class_names)} disease classes ready.")
+
+# ── Config ──
+IMG_SIZE             = 224
+TOMATO_THRESHOLD     = 0.70   # 70% sure it's a tomato leaf
+CONFIDENCE_THRESHOLD = 0.50   # 50% sure about disease
+
+def preprocess(image_bytes):
+    img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    img = img.resize((IMG_SIZE, IMG_SIZE))
+    arr = np.array(img) / 255.0
+    return np.expand_dims(arr, axis=0)
+
+def confidence_label(score: float) -> str:
+    if score >= 0.85: return "High"
+    if score >= 0.60: return "Medium"
+    return "Low"
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     contents = await file.read()
-    image = Image.open(io.BytesIO(contents)).convert("RGB")
-    buffer = io.BytesIO()
-    image.save(buffer, format="JPEG")
-    img_base64 = base64.b64encode(buffer.getvalue()).decode()
+    arr      = preprocess(contents)
 
-    prompt = """You are a plant disease expert. Analyze this tomato leaf image.
-    Respond in this exact JSON format with no extra text:
-    {
-        "disease": "disease name or Healthy",
-        "confidence": "High / Medium / Low",
-        "treatment": "brief treatment advice in one sentence"
-    }"""
+    # ── Layer 1: Tomato leaf validation ──
+    tomato_score = float(validator_model.predict(arr, verbose=0)[0][0])
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "openrouter/auto",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_base64}"}}
-                        ]
-                    }
-                ]
-            },
-            timeout=30.0
-        )
+    if tomato_score < TOMATO_THRESHOLD:
+        return {
+            "status"      : "rejected",
+            "disease"     : None,
+            "confidence"  : None,
+            "treatment"   : None,
+            "message"     : "❌ Not a tomato leaf! Please upload a clear tomato leaf image.",
+            "tomato_score": round(tomato_score * 100, 1)
+        }
 
-    result = response.json()
-    print("OpenRouter response:", result)
+    # ── Layer 2: Disease classification ──
+    preds        = disease_model.predict(arr, verbose=0)[0]
+    top_idx      = int(np.argmax(preds))
+    top_conf     = float(preds[top_idx])
+    disease_name = class_names[str(top_idx)]
 
-    if "choices" not in result:
-        error_msg = result.get("error", {}).get("message", "Unknown error")
-        return {"disease": "API Error", "confidence": "Low", "treatment": error_msg}
+    clean_name = disease_name.replace("Tomato_", "").replace("Tomato__", "").replace("_", " ").strip()
 
-    text = result["choices"][0]["message"]["content"].strip()
-    match = re.search(r'\{.*\}', text, re.DOTALL)
+    if top_conf < CONFIDENCE_THRESHOLD:
+        return {
+            "status"      : "uncertain",
+            "disease"     : clean_name,
+            "confidence"  : confidence_label(top_conf),
+            "treatment"   : None,
+            "message"     : "⚠️ Image unclear. Please retake with better lighting.",
+            "tomato_score": round(tomato_score * 100, 1)
+        }
 
-    if match:
-        data = json.loads(match.group())
-        try:
-            supabase.table("detections").insert({
-                "disease": data["disease"],
-                "confidence": data["confidence"],
-                "treatment": data["treatment"]
-            }).execute()
-        except Exception as e:
-            print("Supabase error:", e)
-        return data
-    else:
-        return {"disease": "Unknown", "confidence": "Low", "treatment": "Could not analyze image."}
+    # Top 3 predictions
+    top3_idx = np.argsort(preds)[-3:][::-1]
+    top3 = [
+        {
+            "disease"   : class_names[str(i)].replace("Tomato_", "").replace("Tomato__", "").replace("_", " "),
+            "confidence": round(float(preds[i]) * 100, 1)
+        }
+        for i in top3_idx
+    ]
+
+    treatment = get_treatment(clean_name)
+
+    # Save to Supabase
+    try:
+        supabase.table("detections").insert({
+            "disease"   : clean_name,
+            "confidence": confidence_label(top_conf),
+            "treatment" : treatment
+        }).execute()
+    except Exception as e:
+        print("Supabase error:", e)
+
+    return {
+        "status"          : "success",
+        "disease"         : clean_name,
+        "confidence"      : confidence_label(top_conf),
+        "confidence_score": round(top_conf * 100, 1),
+        "treatment"       : treatment,
+        "top3"            : top3,
+        "tomato_score"    : round(tomato_score * 100, 1),
+        "message"         : "✅ Analysis complete"
+    }
 
 @app.get("/history")
 async def history():
     try:
-        response = supabase.table("detections").select("*").order("detected_at", desc=True).limit(10).execute()
-        return response.data
-    except Exception as e:
+        res = supabase.table("detections").select("*").order("detected_at", desc=True).limit(10).execute()
+        return res.data
+    except:
         return []
+
+@app.post("/sensor-data")
+async def receive_sensor_data(data: dict):
+    try:
+        supabase.table("sensor_data").insert(data).execute()
+        return {"status": "ok"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/sensor-latest")
+async def sensor_latest():
+    try:
+        res = supabase.table("sensor_data").select("*").order("created_at", desc=True).limit(1).execute()
+        return res.data[0] if res.data else {}
+    except:
+        return {}
+
+def get_treatment(disease: str) -> str:
+    treatments = {
+        "Bacterial Spot"      : "Use Copper-based bactericide. Avoid working when wet.",
+        "Early Blight"        : "Apply Mancozeb or Neem oil spray. Remove infected leaves.",
+        "Late Blight"         : "Use Metalaxyl + Mancozeb. Avoid overhead irrigation.",
+        "Leaf Mold"           : "Improve ventilation. Apply Chlorothalonil fungicide.",
+        "Septoria Leaf Spot"  : "Apply Chlorothalonil. Remove lower infected leaves.",
+        "Spider Mites"        : "Apply Abamectin or neem oil. Increase humidity.",
+        "Target Spot"         : "Apply Azoxystrobin fungicide. Practice crop rotation.",
+        "Yellow Leaf Curl Virus": "Remove infected plants. Control whitefly population.",
+        "Mosaic Virus"        : "Remove infected plants. Control aphid population.",
+        "Healthy"             : "Plant is healthy! Maintain regular watering and nutrition.",
+    }
+    for key in treatments:
+        if key.lower() in disease.lower():
+            return treatments[key]
+    return "Consult a local agricultural expert for treatment advice."
