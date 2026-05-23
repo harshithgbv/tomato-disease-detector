@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import numpy as np
 import tensorflow as tf
-import io, json, os, urllib.request
+import io, json, os
 from supabase import create_client
 from dotenv import load_dotenv
 
@@ -31,13 +31,19 @@ CLASS_NAMES_URL     = "https://huggingface.co/harshithgbv/tomatoguard/resolve/ma
 
 # ── Download models from Hugging Face at startup ──
 def download_if_missing(url, filename):
-    if not os.path.exists(filename):
+    if not os.path.exists(filename) or os.path.getsize(filename) < 1000:
         print(f"Downloading {filename} from Hugging Face...")
-        import urllib.request
-        urllib.request.urlretrieve(url, filename)
-        print(f"✅ {filename} downloaded!")
+        import requests as req
+        r = req.get(url, stream=True)
+        r.raise_for_status()
+        with open(filename, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+        size_mb = os.path.getsize(filename) / 1024 / 1024
+        print(f"✅ {filename} downloaded! ({size_mb:.1f} MB)")
     else:
-        print(f"✅ {filename} already exists, skipping download.")
+        size_mb = os.path.getsize(filename) / 1024 / 1024
+        print(f"✅ {filename} already exists ({size_mb:.1f} MB), skipping.")
 
 print("=" * 50)
 print("Loading TomatoGuard AI models...")
@@ -181,4 +187,3 @@ def get_treatment(disease: str) -> str:
         if key.lower() in disease.lower():
             return treatments[key]
     return "Consult a local agricultural expert for treatment advice."
-       
