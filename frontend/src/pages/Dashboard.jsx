@@ -139,7 +139,7 @@ export default function Dashboard({ language, user }) {
   const [preview, setPreview] = useState(null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [mode, setMode] = useState("upload") // upload | camera
+  const [mode, setMode] = useState("upload")
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const t = translations[language]
@@ -216,7 +216,6 @@ export default function Dashboard({ language, user }) {
 
       <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-md mb-6">
 
-        {/* Upload / Camera toggle */}
         <div className="flex rounded-xl overflow-hidden border border-gray-200 mb-4">
           <button
             onClick={() => { setMode("upload"); streamRef.current?.getTracks().forEach(t => t.stop()) }}
@@ -232,7 +231,6 @@ export default function Dashboard({ language, user }) {
           </button>
         </div>
 
-        {/* Camera view */}
         {mode === "camera" && (
           <div className="mb-4">
             <video ref={videoRef} autoPlay playsInline className="w-full h-64 object-cover rounded-xl bg-black"/>
@@ -245,7 +243,6 @@ export default function Dashboard({ language, user }) {
           </div>
         )}
 
-        {/* File upload */}
         {mode === "upload" && (
           <input
             type="file"
@@ -272,63 +269,71 @@ export default function Dashboard({ language, user }) {
           ) : t.detect}
         </button>
 
-{result && (
-  <div className={`mt-5 p-4 rounded-xl ${
-    result.error || result.status === "rejected" ? "bg-red-50 text-red-700" :
-    result.status === "uncertain" ? "bg-yellow-50 text-yellow-800" :
-    "bg-green-50 text-green-800"
-  }`}>
-    {result.error ? (
-      <p>{result.error}</p>
-    ) : result.status === "rejected" ? (
-      <>
-        <p className="text-lg font-bold">❌ Not a Tomato Leaf!</p>
-        <p className="text-sm mt-1">{result.message}</p>
-        <p className="text-xs mt-1 opacity-70">Tomato score: {result.tomato_score}%</p>
-      </>
-    ) : result.status === "uncertain" ? (
-      <>
-        <p className="text-lg font-bold">⚠️ Uncertain Result</p>
-        <p className="text-sm mt-1">{result.message}</p>
-        <p className="text-sm mt-1">Possible: {result.disease}</p>
-      </>
-    ) : (
-      <>
-        <p className="text-lg font-bold">{t.disease}: {result.disease}</p>
-        <p className="text-sm mt-1">
-          {t.confidence}: <span className={`font-semibold ${
-            result.confidence === "High" ? "text-green-600" :
-            result.confidence === "Medium" ? "text-yellow-600" :
-            "text-red-600"
-          }`}>{result.confidence} ({result.confidence_score}%)</span>
-        </p>
-        <p className="text-sm mt-2">{t.treatment}: {result.treatment}</p>
-        {result.top3 && (
-          <div className="mt-3">
-            <p className="text-xs font-semibold mb-1 opacity-70">Top 3 predictions:</p>
-            {result.top3.map((item, i) => (
-              <div key={i} className="flex justify-between text-xs mt-1">
-                <span>{item.disease}</span>
-                <span className="font-bold">{item.confidence}%</span>
-              </div>
-            ))}
+        {result && (
+          <div className={`mt-5 p-4 rounded-xl ${
+            result.error || result.status === "rejected"
+              ? "bg-red-50 text-red-700"
+              : result.status === "uncertain"
+              ? "bg-yellow-50 text-yellow-800"
+              : "bg-green-50 text-green-800"
+          }`}>
+            {result.error ? (
+              <p>{result.error}</p>
+            ) : result.status === "rejected" ? (
+              <>
+                <p className="text-lg font-bold">❌ Not a Tomato Leaf!</p>
+                <p className="text-sm mt-1">{result.message}</p>
+                <p className="text-xs mt-1 opacity-70">Tomato score: {result.tomato_score}%</p>
+              </>
+            ) : result.status === "uncertain" ? (
+              <>
+                <p className="text-lg font-bold">⚠️ Uncertain Result</p>
+                <p className="text-sm mt-1">{result.message}</p>
+                <p className="text-sm mt-1">Possible: {result.disease}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-bold">{t.disease}: {result.disease}</p>
+                <p className="text-sm mt-1">
+                  {t.confidence}:{" "}
+                  <span className={`font-semibold ${
+                    result.confidence === "High" ? "text-green-600" :
+                    result.confidence === "Medium" ? "text-yellow-600" :
+                    "text-red-600"
+                  }`}>
+                    {result.confidence} ({result.confidence_score}%)
+                  </span>
+                </p>
+                <p className="text-sm mt-2">{t.treatment}: {result.treatment}</p>
+                {result.top3 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-semibold mb-1 opacity-70">Top 3 predictions:</p>
+                    {result.top3.map((item, i) => (
+                      <div key={i} className="flex justify-between text-xs mt-1">
+                        <span>{item.disease}</span>
+                        <span className="font-bold">{item.confidence}%</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs mt-2 opacity-60">🍅 Tomato score: {result.tomato_score}%</p>
+              </>
+            )}
           </div>
         )}
-        <p className="text-xs mt-2 opacity-60">🍅 Tomato score: {result.tomato_score}%</p>
-      </>
-    )}
-  </div>
-)}
+      </div>
 
-      {/* Products */}
-      {result && !result.error && products && (
+      {result && !result.error && result.status === "success" && products && (
         <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-2xl mb-6">
           <h2 className="text-xl font-bold text-green-800 mb-4">{t.products}</h2>
-
           {["organic", "chemical", "preventive"].map(type => (
             products[type]?.length > 0 && (
               <div key={type} className="mb-4">
-                <h3 className={`font-semibold mb-2 ${type === "organic" ? "text-green-700" : type === "chemical" ? "text-blue-700" : "text-yellow-700"}`}>
+                <h3 className={`font-semibold mb-2 ${
+                  type === "organic" ? "text-green-700" :
+                  type === "chemical" ? "text-blue-700" :
+                  "text-yellow-700"
+                }`}>
                   {t[type]}
                 </h3>
                 <div className="flex flex-col gap-2">
