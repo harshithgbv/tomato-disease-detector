@@ -272,18 +272,53 @@ export default function Dashboard({ language, user }) {
           ) : t.detect}
         </button>
 
-        {result && (
-          <div className={`mt-5 p-4 rounded-xl ${result.error ? "bg-red-50 text-red-700" : "bg-green-50 text-green-800"}`}>
-            {result.error ? <p>{result.error}</p> : (
-              <>
-                <p className="text-lg font-bold">{t.disease}: {result.disease}</p>
-                <p className="text-sm mt-1">{t.confidence}: <span className={`font-semibold ${result.confidence === "High" ? "text-green-600" : result.confidence === "Medium" ? "text-yellow-600" : "text-red-600"}`}>{result.confidence}</span></p>
-                <p className="text-sm mt-2">{t.treatment}: {result.treatment}</p>
-              </>
-            )}
+{result && (
+  <div className={`mt-5 p-4 rounded-xl ${
+    result.error || result.status === "rejected" ? "bg-red-50 text-red-700" :
+    result.status === "uncertain" ? "bg-yellow-50 text-yellow-800" :
+    "bg-green-50 text-green-800"
+  }`}>
+    {result.error ? (
+      <p>{result.error}</p>
+    ) : result.status === "rejected" ? (
+      <>
+        <p className="text-lg font-bold">❌ Not a Tomato Leaf!</p>
+        <p className="text-sm mt-1">{result.message}</p>
+        <p className="text-xs mt-1 opacity-70">Tomato score: {result.tomato_score}%</p>
+      </>
+    ) : result.status === "uncertain" ? (
+      <>
+        <p className="text-lg font-bold">⚠️ Uncertain Result</p>
+        <p className="text-sm mt-1">{result.message}</p>
+        <p className="text-sm mt-1">Possible: {result.disease}</p>
+      </>
+    ) : (
+      <>
+        <p className="text-lg font-bold">{t.disease}: {result.disease}</p>
+        <p className="text-sm mt-1">
+          {t.confidence}: <span className={`font-semibold ${
+            result.confidence === "High" ? "text-green-600" :
+            result.confidence === "Medium" ? "text-yellow-600" :
+            "text-red-600"
+          }`}>{result.confidence} ({result.confidence_score}%)</span>
+        </p>
+        <p className="text-sm mt-2">{t.treatment}: {result.treatment}</p>
+        {result.top3 && (
+          <div className="mt-3">
+            <p className="text-xs font-semibold mb-1 opacity-70">Top 3 predictions:</p>
+            {result.top3.map((item, i) => (
+              <div key={i} className="flex justify-between text-xs mt-1">
+                <span>{item.disease}</span>
+                <span className="font-bold">{item.confidence}%</span>
+              </div>
+            ))}
           </div>
         )}
-      </div>
+        <p className="text-xs mt-2 opacity-60">🍅 Tomato score: {result.tomato_score}%</p>
+      </>
+    )}
+  </div>
+)}
 
       {/* Products */}
       {result && !result.error && products && (
