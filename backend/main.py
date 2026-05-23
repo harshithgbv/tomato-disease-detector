@@ -10,6 +10,21 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
+import threading
+import time
+import requests
+
+def keep_alive():
+    while True:
+        time.sleep(840)  # every 14 mins
+        try:
+            requests.get("https://tomato-disease-detector-ii1n.onrender.com/docs")
+            print("✅ Keep alive ping sent")
+        except:
+            pass
+
+# Start keep alive thread
+threading.Thread(target=keep_alive, daemon=True).start()
 
 app.add_middleware(
     CORSMiddleware,
