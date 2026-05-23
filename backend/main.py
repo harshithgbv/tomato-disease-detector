@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import numpy as np
 import tensorflow as tf
-import io, json, os, gdown
+import io, json, os, urllib.request
 from supabase import create_client
 from dotenv import load_dotenv
 
@@ -24,16 +24,17 @@ app.add_middleware(
 # ── Supabase ──
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
-# ── Google Drive Share URLs ──
-DISEASE_MODEL_URL   = "https://drive.google.com/file/d/1wNWvykCN3SiUzDYIuI_ACP8kr14XnyWi/view?usp=drive_link"
-VALIDATOR_MODEL_URL = "https://drive.google.com/file/d/1okK1KGzjRyRpVtAOKFd5u7UO1EO9u4RD/view?usp=drive_link"
-CLASS_NAMES_URL     = "https://drive.google.com/file/d/1oDAVReSivkkaRhH3tbJq_8lAqdRFDo4Q/view?usp=drive_link"
+# ── Hugging Face URLs ──
+DISEASE_MODEL_URL   = "https://huggingface.co/harshithgbv/tomatoguard/resolve/main/tomatoguard_FINAL.keras"
+VALIDATOR_MODEL_URL = "https://huggingface.co/harshithgbv/tomatoguard/resolve/main/tomato_validator.keras"
+CLASS_NAMES_URL     = "https://huggingface.co/harshithgbv/tomatoguard/resolve/main/class_names.json"
 
-# ── Download models from Google Drive at startup ──
+# ── Download models from Hugging Face at startup ──
 def download_if_missing(url, filename):
     if not os.path.exists(filename):
-        print(f"Downloading {filename} from Google Drive...")
-        gdown.download(url, filename, quiet=False, fuzzy=True)
+        print(f"Downloading {filename} from Hugging Face...")
+        import urllib.request
+        urllib.request.urlretrieve(url, filename)
         print(f"✅ {filename} downloaded!")
     else:
         print(f"✅ {filename} already exists, skipping download.")
@@ -180,3 +181,4 @@ def get_treatment(disease: str) -> str:
         if key.lower() in disease.lower():
             return treatments[key]
     return "Consult a local agricultural expert for treatment advice."
+       
