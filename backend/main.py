@@ -2,8 +2,8 @@ from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image
 import numpy as np
-import tensorflow as tf
-import io, json, os
+import onnxruntime as ort
+import io, json, os, requests
 from supabase import create_client
 from dotenv import load_dotenv
 
@@ -25,51 +25,49 @@ app.add_middleware(
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
 # ── Hugging Face URLs ──
-DISEASE_MODEL_URL   = "https://huggingface.co/harshithgbv/tomatoguard/resolve/main/tomatoguard_FINAL.keras"
-VALIDATOR_MODEL_URL = "https://huggingface.co/harshithgbv/tomatoguard/resolve/main/tomato_validator.keras"
-CLASS_NAMES_URL     = "https://huggingface.co/harshithgbv/tomatoguard/resolve/main/class_names.json"
+HF_BASE = "https://huggingface.co/harshithgbv/tomatoguard/resolve/main"
+FILES = {
+    "tomatoguard.onnx"      : f"{HF_BASE}/tomatoguard.onnx",
+    "tomato_validator.onnx" : f"{HF_BASE}/tomato_validator.onnx",
+    "class_names.json"      : f"{HF_BASE}/class_names.json",
+}
 
-# ── Download models from Hugging Face at startup ──
-def download_if_missing(url, filename):
+def download_if_missing(filename, url):
     if not os.path.exists(filename) or os.path.getsize(filename) < 1000:
-        print(f"Downloading {filename} from Hugging Face...")
-        import requests as req
-        r = req.get(url, stream=True)
+        print(f"Downloading {filename}...")
+        r = requests.get(url, stream=True)
         r.raise_for_status()
         with open(filename, "wb") as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
-        size_mb = os.path.getsize(filename) / 1024 / 1024
-        print(f"✅ {filename} downloaded! ({size_mb:.1f} MB)")
+        print(f"✅ {filename} ({os.path.getsize(filename)/1024/1024:.1f} MB)")
     else:
-        size_mb = os.path.getsize(filename) / 1024 / 1024
-        print(f"✅ {filename} already exists ({size_mb:.1f} MB), skipping.")
+        print(f"✅ {filename} already exists ({os.path.getsize(filename)/1024/1024:.1f} MB)")
 
 print("=" * 50)
-print("Loading TomatoGuard AI models...")
+print("Loading TomatoGuard ONNX models...")
 print("=" * 50)
 
-download_if_missing(DISEASE_MODEL_URL,   "tomatoguard_FINAL.keras")
-download_if_missing(VALIDATOR_MODEL_URL, "tomato_validator.keras")
-download_if_missing(CLASS_NAMES_URL,     "class_names.json")
+for filename, url in FILES.items():
+    download_if_missing(filename, url)
 
-disease_model   = tf.keras.models.load_model("tomatoguard_FINAL.keras")
-validator_model = tf.keras.models.load_model("tomato_validator.keras")
+disease_session   = ort.InferenceSession("tomatoguard.onnx")
+validator_session = ort.InferenceSession("tomato_validator.onnx")
 
 with open("class_names.json") as f:
     class_names = json.load(f)
 
-print(f"✅ Models loaded! {len(class_names)} disease classes ready.")
+print(f"✅ ONNX models loaded! {len(class_names)} disease classes ready.")
 
 # ── Config ──
 IMG_SIZE             = 224
-TOMATO_THRESHOLD     = 0.70   # 70% sure it's a tomato leaf
-CONFIDENCE_THRESHOLD = 0.50   # 50% sure about disease
+TOMATO_THRESHOLD     = 0.70
+CONFIDENCE_THRESHOLD = 0.50
 
 def preprocess(image_bytes):
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     img = img.resize((IMG_SIZE, IMG_SIZE))
-    arr = np.array(img) / 255.0
+    arr = np.array(img, dtype=np.float32) / 255.0
     return np.expand_dims(arr, axis=0)
 
 def confidence_label(score: float) -> str:
@@ -77,13 +75,17 @@ def confidence_label(score: float) -> str:
     if score >= 0.60: return "Medium"
     return "Low"
 
+def run_model(session, arr):
+    input_name = session.get_inputs()[0].name
+    return session.run(None, {input_name: arr})[0]
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     contents = await file.read()
     arr      = preprocess(contents)
 
     # ── Layer 1: Tomato leaf validation ──
-    tomato_score = float(validator_model.predict(arr, verbose=0)[0][0])
+    tomato_score = float(run_model(validator_session, arr)[0][0])
 
     if tomato_score < TOMATO_THRESHOLD:
         return {
@@ -96,7 +98,7 @@ async def predict(file: UploadFile = File(...)):
         }
 
     # ── Layer 2: Disease classification ──
-    preds        = disease_model.predict(arr, verbose=0)[0]
+    preds        = run_model(disease_session, arr)[0]
     top_idx      = int(np.argmax(preds))
     top_conf     = float(preds[top_idx])
     disease_name = class_names[str(top_idx)]
@@ -113,7 +115,6 @@ async def predict(file: UploadFile = File(...)):
             "tomato_score": round(tomato_score * 100, 1)
         }
 
-    # Top 3 predictions
     top3_idx = np.argsort(preds)[-3:][::-1]
     top3 = [
         {
@@ -125,7 +126,6 @@ async def predict(file: UploadFile = File(...)):
 
     treatment = get_treatment(clean_name)
 
-    # Save to Supabase
     try:
         supabase.table("detections").insert({
             "disease"   : clean_name,
@@ -172,16 +172,16 @@ async def sensor_latest():
 
 def get_treatment(disease: str) -> str:
     treatments = {
-        "Bacterial Spot"      : "Use Copper-based bactericide. Avoid working when wet.",
-        "Early Blight"        : "Apply Mancozeb or Neem oil spray. Remove infected leaves.",
-        "Late Blight"         : "Use Metalaxyl + Mancozeb. Avoid overhead irrigation.",
-        "Leaf Mold"           : "Improve ventilation. Apply Chlorothalonil fungicide.",
-        "Septoria Leaf Spot"  : "Apply Chlorothalonil. Remove lower infected leaves.",
-        "Spider Mites"        : "Apply Abamectin or neem oil. Increase humidity.",
-        "Target Spot"         : "Apply Azoxystrobin fungicide. Practice crop rotation.",
+        "Bacterial Spot"        : "Use Copper-based bactericide. Avoid working when wet.",
+        "Early Blight"          : "Apply Mancozeb or Neem oil spray. Remove infected leaves.",
+        "Late Blight"           : "Use Metalaxyl + Mancozeb. Avoid overhead irrigation.",
+        "Leaf Mold"             : "Improve ventilation. Apply Chlorothalonil fungicide.",
+        "Septoria Leaf Spot"    : "Apply Chlorothalonil. Remove lower infected leaves.",
+        "Spider Mites"          : "Apply Abamectin or neem oil. Increase humidity.",
+        "Target Spot"           : "Apply Azoxystrobin fungicide. Practice crop rotation.",
         "Yellow Leaf Curl Virus": "Remove infected plants. Control whitefly population.",
-        "Mosaic Virus"        : "Remove infected plants. Control aphid population.",
-        "Healthy"             : "Plant is healthy! Maintain regular watering and nutrition.",
+        "Mosaic Virus"          : "Remove infected plants. Control aphid population.",
+        "Healthy"               : "Plant is healthy! Maintain regular watering and nutrition.",
     }
     for key in treatments:
         if key.lower() in disease.lower():
