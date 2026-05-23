@@ -61,7 +61,7 @@ print(f"✅ ONNX models loaded! {len(class_names)} disease classes ready.")
 
 # ── Config ──
 IMG_SIZE             = 224
-TOMATO_THRESHOLD     = 0.70
+TOMATO_THRESHOLD = 0.35
 CONFIDENCE_THRESHOLD = 0.50
 
 def preprocess(image_bytes):
