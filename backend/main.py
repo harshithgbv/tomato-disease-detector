@@ -24,17 +24,16 @@ app.add_middleware(
 # ── Supabase ──
 supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
 
-# ── Google Drive File IDs ──
-DISEASE_MODEL_ID   = "1wNWvykCN3SiUzDYIuI_ACP8kr14XnyWi"
-VALIDATOR_MODEL_ID = "1okK1KGzjRyRpVtAOKFd5u7UO1EO9u4RD"
-CLASS_NAMES_ID     = "1oDAVReSivkkaRhH3tbJq_8lAqdRFDo4Q"
+# ── Google Drive Share URLs ──
+DISEASE_MODEL_URL   = "https://drive.google.com/file/d/1wNWvykCN3SiUzDYIuI_ACP8kr14XnyWi/view?usp=drive_link"
+VALIDATOR_MODEL_URL = "https://drive.google.com/file/d/1okK1KGzjRyRpVtAOKFd5u7UO1EO9u4RD/view?usp=drive_link"
+CLASS_NAMES_URL     = "https://drive.google.com/file/d/1oDAVReSivkkaRhH3tbJq_8lAqdRFDo4Q/view?usp=drive_link"
 
 # ── Download models from Google Drive at startup ──
-def download_if_missing(file_id, filename):
+def download_if_missing(url, filename):
     if not os.path.exists(filename):
         print(f"Downloading {filename} from Google Drive...")
-        url = f"https://drive.google.com/uc?id={file_id}"
-        gdown.download(url, filename, quiet=False)
+        gdown.download(url, filename, quiet=False, fuzzy=True)
         print(f"✅ {filename} downloaded!")
     else:
         print(f"✅ {filename} already exists, skipping download.")
@@ -43,9 +42,9 @@ print("=" * 50)
 print("Loading TomatoGuard AI models...")
 print("=" * 50)
 
-download_if_missing(DISEASE_MODEL_ID,   "tomatoguard_FINAL.keras")
-download_if_missing(VALIDATOR_MODEL_ID, "tomato_validator.keras")
-download_if_missing(CLASS_NAMES_ID,     "class_names.json")
+download_if_missing(DISEASE_MODEL_URL,   "tomatoguard_FINAL.keras")
+download_if_missing(VALIDATOR_MODEL_URL, "tomato_validator.keras")
+download_if_missing(CLASS_NAMES_URL,     "class_names.json")
 
 disease_model   = tf.keras.models.load_model("tomatoguard_FINAL.keras")
 validator_model = tf.keras.models.load_model("tomato_validator.keras")
