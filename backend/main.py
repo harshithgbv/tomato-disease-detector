@@ -67,7 +67,9 @@ CONFIDENCE_THRESHOLD = 0.50
 def preprocess(image_bytes):
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     img = img.resize((IMG_SIZE, IMG_SIZE))
-    arr = np.array(img, dtype=np.float32) / 255.0
+    arr = np.array(img, dtype=np.float32)
+    # EfficientNet preprocessing
+    arr = arr / 127.5 - 1.0  # ← EfficientNet expects [-1, 1] range
     return np.expand_dims(arr, axis=0)
 
 def confidence_label(score: float) -> str:
