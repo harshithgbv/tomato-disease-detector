@@ -247,22 +247,40 @@ export default function App() {
           {loading ? t.detecting : t.detect}
         </button>
 
+        {/* ── Result Display ── */}
         {result && (
-          <div className={`mt-6 p-4 rounded-xl ${result.error ? "bg-red-50 text-red-700" : "bg-green-50 text-green-800"}`}>
+          <div className={`mt-6 p-4 rounded-xl ${
+            result.error ? "bg-red-50 text-red-700" :
+            result.status === "rejected" ? "bg-orange-50 text-orange-700" :
+            result.status === "uncertain" ? "bg-yellow-50 text-yellow-700" :
+            "bg-green-50 text-green-800"
+          }`}>
             {result.error ? (
               <p>{result.error}</p>
+            ) : result.status === "rejected" ? (
+              <>
+                <p className="text-lg font-bold">{result.message}</p>
+                <p className="text-sm mt-1">🍅 Tomato Score: {result.tomato_score}%</p>
+              </>
+            ) : result.status === "uncertain" ? (
+              <>
+                <p className="text-lg font-bold">{result.message}</p>
+                <p className="text-sm mt-1">{t.disease}: {result.disease}</p>
+                <p className="text-sm mt-1">🍅 Tomato Score: {result.tomato_score}%</p>
+              </>
             ) : (
               <>
                 <p className="text-lg font-bold">{t.disease}: {result.disease}</p>
-                <p className="text-sm mt-1">{t.confidence}: {result.confidence}</p>
+                <p className="text-sm mt-1">{t.confidence}: {result.confidence} ({result.confidence_score}%)</p>
                 <p className="text-sm mt-2">{t.treatment}: {result.treatment}</p>
+                <p className="text-sm mt-2">🍅 Tomato Score: {result.tomato_score}%</p>
               </>
             )}
           </div>
         )}
       </div>
 
-      {result && !result.error && (
+      {result && result.status === "success" && (
         <>
           {/* Product Recommendations */}
           {products && (
