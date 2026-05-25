@@ -64,7 +64,7 @@ export default function SensorDashboard() {
     try {
 
       // FIXED API ENDPOINT
-      const res = await axios.get(`${BACKEND}/data`)
+      const res = await axios.get(`${BACKEND}/sensor-latest`)
 
       console.log("Sensor API Response:", res.data)
 
