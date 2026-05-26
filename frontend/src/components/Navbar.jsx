@@ -13,7 +13,7 @@ export default function Navbar({ user, language, setLanguage }) {
     <nav className="w-full bg-white shadow-sm px-6 py-3 flex items-center justify-between sticky top-0 z-50">
       <div className="flex items-center gap-2">
         <span className="text-2xl">🍅</span>
-        <span className="font-bold text-green-800 text-lg">TomatoGuard AI</span>
+        <span className="font-bold text-green-800 text-lg">{t.nav.brand}</span>
       </div>
 
       <div className="flex items-center gap-3">
@@ -50,7 +50,7 @@ export default function Navbar({ user, language, setLanguage }) {
           onClick={handleLogout}
           className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-lg text-sm font-semibold hover:bg-red-100 transition"
         >
-          Logout
+          {t.nav.logout}
         </button>
       </div>
     </nav>
