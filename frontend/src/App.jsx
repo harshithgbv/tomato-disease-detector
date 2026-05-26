@@ -8,6 +8,8 @@ import Navbar from "./components/Navbar"
 import translations from "./translations"
 const t = translations[language]
 function HistoryTab() {
+  const [language, setLanguage] = useState("english")
+  const t = translations[language]
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
 
