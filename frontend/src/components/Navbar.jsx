@@ -1,8 +1,10 @@
 import { supabase } from "../supabase"
 import { useNavigate } from "react-router-dom"
+import translations from "../translations"
 
 export default function Navbar({ user, language, setLanguage }) {
   const navigate = useNavigate()
+  const t = translations[language]
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
