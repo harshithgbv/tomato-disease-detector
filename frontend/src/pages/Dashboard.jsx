@@ -152,16 +152,24 @@ export default function Dashboard({ language, user }) {
             </button>
           </div>
         )}
-
-        {/* File upload */}
         {mode === "upload" && (
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageChange}
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-green-100 file:text-green-700 hover:file:bg-green-200 mb-4"
-          />
-        )}
+  <>
+    <input
+      type="file"
+      accept="image/*"
+      onChange={handleImageChange}
+      className="hidden"
+      id="fileInput"
+    />
+
+    <label
+      htmlFor="fileInput"
+      className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold cursor-pointer transition mb-4 bg-green-600 text-white hover:bg-green-700"
+    >
+      📁 {image ? "Change Image" : "Choose Image"}
+    </label>
+  </>
+)}
 
         {preview && (
           <img src={preview} alt="Leaf preview" className="w-full h-64 object-cover rounded-xl mb-4"/>
