@@ -5,7 +5,8 @@ import Login from "./pages/Login"
 import Dashboard from "./pages/Dashboard"
 import SensorDashboard from "./pages/SensorDashboard"
 import Navbar from "./components/Navbar"
-
+import translations from "./translations"
+const t = translations[language]
 function HistoryTab() {
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
