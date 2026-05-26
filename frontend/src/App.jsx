@@ -7,7 +7,7 @@ import SensorDashboard from "./pages/SensorDashboard"
 import Navbar from "./components/Navbar"
 import translations from "./translations"
 
-function HistoryTab() {
+function HistoryTab({ language }) {
   const t = translations[language]
   const [history, setHistory] = useState([])
   const [loading, setLoading] = useState(true)
@@ -117,7 +117,7 @@ function ProtectedLayout({ user, language, setLanguage }) {
       <div className="max-w-4xl mx-auto">
         {activeTab === "detect"  && <Dashboard language={language} user={user} />}
         {activeTab === "sensors" && <SensorDashboard />}
-        {activeTab === "history" && <HistoryTab />}
+        {activeTab === "history" && <HistoryTab language={language} />}
         {activeTab === "shops"   && <ShopsTab />}
       </div>
     </div>
